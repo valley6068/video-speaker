@@ -43,7 +43,7 @@ python ~/.claude/skills/video-speaker/vs.py info "https://www.youtube.com/watch?
 - Links found inside a web page are only followed when they go to the public internet, never to `file://`, this computer or the home network (router, NAS).
 - Anything that changes something on the server needs a POST, so the tool's own downloads (which only send GET) can't be turned against it.
 - Downloads are capped at 2 GB, and oversized "picture bombs" are refused.
-- Fake videos (playlists that point at local files) are refused by ffmpeg. Use a recent ffmpeg (6 or newer).
+- Fake videos (playlists that point at local files) are refused by ffmpeg. Checked with ffmpeg 9, so keep ffmpeg up to date.
 - The skill tells the AI that everything inside a video (title, transcript, on-screen text) is data, never instructions.
 
 ## Settings

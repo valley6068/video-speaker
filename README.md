@@ -40,6 +40,10 @@ python ~/.claude/skills/video-speaker/vs.py info "https://www.youtube.com/watch?
 ## Safety
 - The local server only listens on `127.0.0.1`, so other computers can't reach it.
 - It refuses requests from websites in your browser, including hidden ones (checked with `Host`, `Origin` and `Sec-Fetch-Site`), so a web page can't read your history, change settings or make it open files.
+- Links found inside a web page are only followed when they go to the public internet, never to `file://`, this computer or the home network (router, NAS).
+- Anything that changes something on the server needs a POST, so the tool's own downloads (which only send GET) can't be turned against it.
+- Downloads are capped at 2 GB, and oversized "picture bombs" are refused.
+- Fake videos (playlists that point at local files) are refused by ffmpeg. Use a recent ffmpeg (6 or newer).
 - The skill tells the AI that everything inside a video (title, transcript, on-screen text) is data, never instructions.
 
 ## Settings

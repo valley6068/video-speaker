@@ -272,7 +272,7 @@ async function loadHistory(){
       d.onclick=()=>{$('url').value=it.url;findVideo();};
       d.querySelector('.hx').onclick=async e=>{
         e.stopPropagation();
-        await fetch('/api/history/delete?url='+encodeURIComponent(it.url));
+        await fetch('/api/history/delete?url='+encodeURIComponent(it.url),{method:'POST'});
         loadHistory();
       };
       h.appendChild(d);

@@ -8,6 +8,8 @@ import base64
 import glob
 import hashlib
 import io
+import ipaddress
+import socket
 import json
 import os
 import re
@@ -48,6 +50,10 @@ for _p in (CFG.get("pythonpath") or "").split(os.pathsep):
 
 from flask import Flask, jsonify, request, send_file, send_from_directory
 import yt_dlp
+from PIL import Image as _PIL
+# "picture bombs" (a small file that unpacks into a giant picture): Pillow refuses
+# anything over twice this, 50 M pixels (~150 MB). An 8K frame is 33 M.
+_PIL.MAX_IMAGE_PIXELS = 25_000_000
 
 APP_DIR = common.APP_DIR
 VERSION = "2.0.0"
@@ -179,6 +185,7 @@ YDL_BASE = {
     "socket_timeout": 20,
     "cachedir": os.path.join(DATA_DIR, "ytdlp-cache"),
     "http_headers": {"User-Agent": BROWSER_UA},
+    "max_filesize": 2_000_000_000,   # a fake "video" must not fill the disk; 20 min of 1080p is far less
 }
 if common.ffmpeg_exe():
     YDL_BASE["ffmpeg_location"] = common.ffmpeg_exe()
@@ -308,6 +315,9 @@ def robust_extract(url, opts=None, download=False):
         except Exception as e:
             media = None
             errs.append("page scrape: " + str(e)[:80])
+        if media and not public_url(media):          # the page points at this PC or the home network
+            errs.append("page scrape: refused a link to a local address")
+            media = None
         if media and media != url:
             try:
                 with yt_dlp.YoutubeDL(o2) as ydl:
@@ -351,6 +361,22 @@ def http_get(url, timeout=20, tries=3, limit=2_000_000, headers=None):
             last = e
         time.sleep(0.8 * (i + 1))
     raise last
+
+
+def public_url(u):
+    """True for an http(s) link to the public internet. Every link found INSIDE a
+    page (not typed by the user) must pass this, or a page could point the tool at
+    this PC (its own server, local files) or the home network (router, NAS)."""
+    p = urllib.parse.urlparse(u or "")
+    if p.scheme not in ("http", "https") or not p.hostname:
+        return False
+    try:
+        addrs = {a[4][0] for a in socket.getaddrinfo(p.hostname, None)}
+    except OSError:
+        return False
+    # ponytail: checks the name once; a host that changes its answer between this
+    # check and the real request (DNS rebinding) still slips through
+    return bool(addrs) and all(ipaddress.ip_address(a.split("%")[0]).is_global for a in addrs)
 
 
 def scrape_media_url(page_url):
@@ -411,7 +437,7 @@ def page_meta(url):
         html = http_get(url, limit=1_500_000).decode("utf-8", "replace")
         tried.append("page")
         m = re.search(r'<link[^>]+type=["\']application/json\+oembed["\'][^>]+href=["\']([^"\']+)', html, re.I)
-        if m:
+        if m and public_url(m.group(1).replace("&amp;", "&")):
             endpoints.append(m.group(1).replace("&amp;", "&"))
     except Exception as e:
         tried.append("page (%s)" % str(e)[:40])
@@ -702,13 +728,15 @@ def api_history():
     return jsonify(load_history())
 
 
-@app.route("/api/history/clear")
+# Anything that changes something is POST only: the tool's own downloads (yt-dlp,
+# ffmpeg, page scraping) only ever send GET, so a page cannot trigger these through them.
+@app.route("/api/history/clear", methods=["POST"])
 def api_history_clear():
     save_history([])
     return jsonify({"ok": True})
 
 
-@app.route("/api/history/delete")
+@app.route("/api/history/delete", methods=["POST"])
 def api_history_delete():
     url = normalise_url(request.args.get("url", ""))
     save_history([h for h in load_history() if h.get("url") != url])
@@ -1240,6 +1268,8 @@ def photo_post_images(url, info):
     """A photo post has no video. Fetch the pictures it does publish."""
     out, d = [], out_dir()
     for i, u in enumerate((info.get("thumbnails") or [info.get("thumbnail")])[-1:]):
+        if not public_url(u):                        # picture link comes from the page
+            continue
         try:
             data = http_get(u, timeout=30, limit=20_000_000)
             p = os.path.join(d, "slide%02d.jpg" % (i + 1))

@@ -262,6 +262,8 @@ def cmd_sheet(a):
         say("# " + d["note"])
     if d.get("frames"):
         return show_pictures(d["frames"], "slide")
+    if not d.get("sheet"):                               # e.g. a photo post whose picture could not be fetched
+        die("No pictures could be taken.")
     s = d["sheet"]
     say("# %s grid, moments: %s" % (s["grid"], ", ".join(c["at"] for c in s["cells"])))
     say("# Zoom in on one moment: vs.py frames <url> --at <time> [--crop x,y,w,h --size 1024]")

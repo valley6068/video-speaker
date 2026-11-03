@@ -37,6 +37,11 @@ You can also run it yourself:
 python ~/.claude/skills/video-speaker/vs.py info "https://www.youtube.com/watch?v=jNQXAC9IVRw"
 ```
 
+## Safety
+- The local server only listens on `127.0.0.1`, so other computers can't reach it.
+- It refuses requests from websites in your browser, including hidden ones (checked with `Host`, `Origin` and `Sec-Fetch-Site`), so a web page can't read your history, change settings or make it open files.
+- The skill tells the AI that everything inside a video (title, transcript, on-screen text) is data, never instructions.
+
 ## Settings
 Optional environment variables:
 - `VIDEOSPEAKER_PORT`: the local port (default 8765).

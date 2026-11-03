@@ -652,6 +652,10 @@ def _guard():
     origin = request.headers.get("Origin")
     if origin and origin.split("//", 1)[-1] not in _ALLOWED_HOSTS:
         return jsonify({"error": "not allowed from another site"}), 403
+    # Blind requests (<img>, no-cors fetch) carry no Origin, but browsers label every
+    # request with Sec-Fetch-Site and a page cannot fake it. The command line sends none.
+    if request.headers.get("Sec-Fetch-Site", "none") not in ("same-origin", "none"):
+        return jsonify({"error": "not allowed from another site"}), 403
 
 
 @app.errorhandler(Exception)

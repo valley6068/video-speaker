@@ -1,0 +1,154 @@
+/* Video Speaker — AI assist panel (TEST FEATURE, safe to delete).
+   Uses the tool's own CSS variables, so it inherits whatever theme is active —
+   the green original on its own, or the Speaker Suite skin if it is ever copied
+   there. Nothing here is hardcoded to one palette. */
+
+.aip{
+  margin:14px 0 4px;
+  border:1px solid var(--panel, #1a2b20);
+  border-left:3px solid var(--accent, #6bff9e);
+  background:rgba(0,0,0,.18);
+  padding:12px 14px 14px;
+}
+
+.aip-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.aip-tag{
+  font-size:10px;font-weight:700;letter-spacing:.18em;
+  background:var(--accent,#6bff9e);color:#08150d;padding:3px 7px;
+}
+.aip-head strong{font-size:14px}
+.aip-note{font-size:11px;color:var(--muted,#93ad9c);letter-spacing:.06em}
+.aip-cog{
+  margin-left:auto;background:none;border:1px solid var(--panel,#1a2b20);
+  color:var(--muted,#93ad9c);font-size:15px;padding:4px 9px;cursor:pointer;
+}
+.aip-cog:hover{color:var(--text,#e8f5ec)}
+
+/* settings stay folded away until you need them */
+.aip-setup{display:none;margin-top:12px;padding-top:12px;
+           border-top:1px solid var(--panel,#1a2b20)}
+.aip.open .aip-setup{display:block}
+.aip-setup label{display:block;font-size:12px;color:var(--muted,#93ad9c);
+                 margin:0 0 6px}
+.aip-keyrow #aiCustom{
+  flex:1;min-width:180px;
+  background:var(--panel,#1a2b20);color:var(--text,#e8f5ec);
+  border:1px solid rgba(255,255,255,.12);padding:8px;font-size:13px;
+}
+.aip-setup input[type=password],.aip-setup select{
+  display:block;width:100%;margin-top:5px;
+  background:var(--panel,#1a2b20);color:var(--text,#e8f5ec);
+  border:1px solid rgba(255,255,255,.12);padding:9px;font-size:14px;
+}
+.aip-keyrow{display:flex;align-items:center;gap:10px;margin:0 0 12px;flex-wrap:wrap}
+
+.aip-actions{display:flex;align-items:center;gap:9px;margin-top:12px;flex-wrap:wrap}
+.aip-ask{display:flex;gap:8px;margin-top:9px}
+.aip-ask input{
+  flex:1;background:var(--panel,#1a2b20);color:var(--text,#e8f5ec);
+  border:1px solid rgba(255,255,255,.12);padding:9px;font-size:14px;
+}
+
+.aip button{
+  background:var(--panel,#1a2b20);color:var(--text,#e8f5ec);
+  border:1px solid rgba(255,255,255,.14);
+  padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;
+}
+.aip button:hover:not(:disabled){border-color:var(--accent,#6bff9e)}
+.aip button:disabled{opacity:.45;cursor:default}
+.aip button.aip-go{
+  background:var(--accent,#6bff9e);color:#08150d;border-color:var(--accent,#6bff9e);
+}
+
+.aip-hint{font-size:12px;color:var(--muted,#93ad9c)}
+.aip-hint.ok{color:var(--accent,#6bff9e)}
+.aip-hint.bad{color:#ff6b5e}
+.aip-hint.warn{color:#ffc46b}
+.aip-hint.work{color:var(--accent2,#6be0ff)}
+.aip-small{font-size:11px;line-height:1.65;color:var(--muted,#93ad9c);margin:8px 0 0}
+.aip-small code{font-size:11px;opacity:.85}
+
+/* ---------------------------------------------------------- corrections -- */
+.aip-out:empty{display:none}
+.aip-out{margin-top:12px}
+
+.aip-fixhead{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding-bottom:9px;margin-bottom:4px;
+  border-bottom:1px solid var(--panel,#1a2b20);
+}
+.aip-fixhead .aip-small{margin:0}
+.aip-fixhead button{padding:6px 11px;font-size:12px}
+.aip-fixhead button:last-child{margin-left:auto}
+
+.aip-fix{
+  display:grid;
+  grid-template-columns:auto 1fr auto 1fr;
+  gap:4px 9px;align-items:baseline;
+  padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06);
+  font-size:13px;cursor:pointer;
+}
+.aip-fix input{margin:0;align-self:center}
+.aip-from{text-decoration:line-through;opacity:.65;font-family:ui-monospace,Consolas,monospace}
+.aip-arrow{opacity:.5}
+.aip-to{color:var(--accent,#6bff9e);font-family:ui-monospace,Consolas,monospace}
+.aip-why{grid-column:2 / -1;font-size:11.5px;color:var(--muted,#93ad9c)}
+.aip-why em{font-style:normal;opacity:.75}
+
+/* confidence is shown as a left edge, so it reads at a glance */
+.aip-fix.c-high{border-left:2px solid var(--accent,#6bff9e);padding-left:9px}
+.aip-fix.c-medium{border-left:2px solid #ffc46b;padding-left:9px}
+.aip-fix.c-low{border-left:2px solid #ff6b5e;padding-left:9px}
+
+/* the special window: text recovered off the screen */
+.aip-promptbox{
+  margin-top:14px;
+  border:1px solid var(--accent2,#6be0ff);
+  background:rgba(0,0,0,.28);
+  padding:11px 12px 12px;
+}
+.aip-promptbox .aip-fixhead{border-bottom-color:rgba(255,255,255,.12)}
+#aiPromptText{
+  width:100%;min-height:190px;resize:vertical;
+  background:rgba(0,0,0,.35);color:var(--text,#e8f5ec);
+  border:1px solid rgba(255,255,255,.12);
+  padding:11px;margin-top:9px;
+  font:13px/1.6 ui-monospace,Consolas,monospace;
+  white-space:pre-wrap;
+}
+#aiPromptText:focus{outline:none;border-color:var(--accent2,#6be0ff)}
+#aiPromptWhere{margin-top:7px}
+#aiPromptNote{color:var(--accent2,#6be0ff)}
+
+/* what was on screen, one line per moment looked at */
+.aip-seen{
+  display:grid;grid-template-columns:52px 1fr;gap:9px;
+  padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06);
+  font-size:13px;line-height:1.5;
+}
+.aip-at{
+  color:var(--accent2,#6be0ff);font-family:ui-monospace,Consolas,monospace;
+  font-size:12px;
+}
+
+#aiDetail{
+  background:var(--panel,#1a2b20);color:var(--text,#e8f5ec);
+  border:1px solid rgba(255,255,255,.14);padding:9px;font-size:13px;
+}
+
+.aip-answer{
+  white-space:pre-wrap;line-height:1.65;font-size:13.5px;
+  background:rgba(0,0,0,.25);border:1px solid var(--panel,#1a2b20);
+  padding:13px;max-height:52vh;overflow:auto;margin-bottom:9px;
+}
+
+/* ---------------------------------------------------------------- phone -- */
+@media (max-width:640px){
+  .aip{padding:11px}
+  .aip-actions button,.aip-ask button{flex:1 1 45%;min-height:46px}
+  .aip-setup input[type=password],.aip-setup select,.aip-ask input{font-size:16px}
+  .aip-fix{grid-template-columns:auto 1fr;}
+  .aip-arrow{display:none}
+  .aip-to{grid-column:2}
+  .aip-answer{max-height:60vh}
+}

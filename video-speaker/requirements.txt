@@ -1,0 +1,8 @@
+flask
+yt-dlp
+faster-whisper
+# av 19 removed an option faster-whisper 1.2.1 still uses ("metadata_errors"): Whisper fails on every video
+av<19
+Pillow
+imageio-ffmpeg
+certifi

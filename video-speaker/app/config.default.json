@@ -1,0 +1,14 @@
+{
+ "port": 8765,
+ "python": "",
+ "ffmpeg": "",
+ "pythonpath": "",
+ "whisper_model": "small",
+ "whisper_dir": "",
+ "media_max_age_sec": 900,
+ "text_cache_mb": 50,
+ "auto_update_ytdlp": true,
+ "ollama_key": "",
+ "vision_model": "minimax-m3",
+ "model": ""
+}

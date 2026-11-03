@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video Speaker</title>
+<style>
+  :root{--bg:#121a15;--panel:#1a2b20;--accent:#6bff9e;--accent2:#6be0ff;--text:#e8f5ec;--muted:#93ad9c;
+        --ytbg:#0f0f0f;--ytpanel:#272727;--yttext:#f1f1f1;--ytmuted:#aaaaaa;}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);padding:18px;}
+  body.fullmode{overflow:hidden;}
+  h1{font-size:18px;margin:0 0 12px;color:var(--accent);}
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;}
+  button{background:var(--panel);color:var(--text);border:1px solid #335041;border-radius:9px;
+         padding:10px 16px;font-size:15px;cursor:pointer;font-weight:600;}
+  button:hover{border-color:var(--accent);}
+  button.primary{background:var(--accent);color:#0f2216;border-color:var(--accent);}
+  button.go{background:var(--accent2);color:#08222b;border-color:var(--accent2);}
+  input[type=text]{flex:1;min-width:200px;background:#0f1912;color:var(--text);
+                   border:1px solid #335041;border-radius:9px;padding:11px;font-size:14px;}
+  input.time{width:90px;flex:0;text-align:center;font-family:ui-monospace,Consolas,monospace;}
+  label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px;}
+  select{background:var(--panel);color:var(--text);border:1px solid #335041;border-radius:7px;padding:8px;max-width:280px;}
+  textarea{width:100%;height:34vh;background:#0f1912;color:var(--text);border:1px solid #335041;
+           border-radius:10px;padding:14px;font:13px/1.6 ui-monospace,Consolas,monospace;resize:vertical;}
+  #status{font-size:13px;color:var(--accent2);min-height:18px;margin-top:8px;}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px;}
+
+  /* ===== YouTube mirror ===== */
+  #mirror{display:none;background:var(--ytbg);border-radius:14px;margin-bottom:14px;
+          color:var(--yttext);font-family:Roboto,system-ui,Arial,sans-serif;}
+  body.fullmode #mirror{display:block;position:fixed;inset:0;z-index:40;border-radius:0;
+          overflow-y:auto;padding-bottom:90px;}
+  #mirror.show{display:block;}
+  #mirrorinner{max-width:900px;margin:0 auto;padding:16px 16px 24px;}
+  #frame{position:relative;width:100%;aspect-ratio:16/9;background:#000 center/contain no-repeat;
+         border-radius:12px;overflow:hidden;}
+  #frametime{position:absolute;right:10px;bottom:10px;background:rgba(0,0,0,.8);color:#fff;
+             font:13px ui-monospace,Consolas,monospace;padding:3px 7px;border-radius:5px;}
+  /* seek bar (red, dual handle) sits right under the frame */
+  #seek{display:none;position:relative;height:46px;margin:6px 2px 4px;}
+  #seektrack{position:absolute;top:12px;left:0;right:0;height:4px;border-radius:2px;background:#4a4a4a;}
+  #seek:hover #seektrack{height:6px;top:11px;}
+  #seek input[type=range]{position:absolute;left:0;top:0;width:100%;height:30px;margin:0;
+      -webkit-appearance:none;appearance:none;background:none;pointer-events:none;}
+  #seek input[type=range]::-webkit-slider-runnable-track{height:4px;background:transparent;}
+  #seek input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;
+      width:16px;height:16px;border-radius:50%;background:#f00;border:none;
+      cursor:pointer;margin-top:-6px;}
+  #seek input[type=range]::-moz-range-track{height:4px;background:transparent;}
+  #seek input[type=range]::-moz-range-thumb{pointer-events:auto;width:15px;height:15px;
+      border-radius:50%;background:#f00;border:none;cursor:pointer;}
+  #seeklabel{position:absolute;top:28px;left:0;font:12px ui-monospace,Consolas,monospace;color:var(--ytmuted);}
+  #preview{display:none;position:absolute;bottom:42px;z-index:10;pointer-events:none;
+           background:#000;border:2px solid #fff;border-radius:8px;overflow:hidden;
+           box-shadow:0 4px 18px rgba(0,0,0,.6);}
+  #previmg{background-repeat:no-repeat;}
+  #prevtime{position:absolute;bottom:3px;left:0;right:0;text-align:center;
+            font:12px ui-monospace,Consolas,monospace;color:#fff;text-shadow:0 1px 3px #000;}
+  /* time cards */
+  #cards{display:none;gap:8px;overflow-x:auto;padding:6px 2px 10px;}
+  .tcard{flex:0 0 auto;cursor:pointer;border-radius:8px;overflow:hidden;border:2px solid transparent;
+         background:#000;position:relative;}
+  .tcard:hover{border-color:#f00;}
+  .tcard .ti{background-repeat:no-repeat;display:block;}
+  .tcard .tl{position:absolute;right:4px;bottom:4px;background:rgba(0,0,0,.8);color:#fff;
+             font:11px ui-monospace,Consolas,monospace;padding:1px 5px;border-radius:4px;}
+  /* title / channel / stats / description */
+  #vtitle{font-size:19px;font-weight:700;margin:12px 0 8px;line-height:1.35;}
+  #chrow{display:flex;align-items:center;gap:10px;margin-bottom:10px;user-select:none;}
+  #avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+          font-size:19px;font-weight:700;color:#fff;flex-shrink:0;}
+  #chname{font-size:15px;font-weight:600;}
+  #chsub{font-size:12px;color:var(--ytmuted);}
+  #statsrow{background:var(--ytpanel);border-radius:12px;padding:10px 14px;font-size:13.5px;
+            color:var(--yttext);margin-bottom:12px;}
+  #statsrow b{font-weight:600;}
+  #ytdesc{white-space:pre-wrap;color:var(--yttext);font-size:13.5px;margin-top:6px;
+          max-height:60px;overflow:hidden;}
+  #ytdesc.open{max-height:none;}
+  #descmore{color:var(--ytmuted);cursor:pointer;font-weight:600;font-size:13px;margin-top:4px;display:inline-block;}
+  /* comments */
+  #ytcomments{margin-top:6px;}
+  #ytcomments h3{font-size:15px;margin:10px 0 12px;}
+  .ycmt{display:flex;gap:12px;margin-bottom:16px;font-size:13.5px;line-height:1.5;}
+  .ycmt .cav{width:34px;height:34px;border-radius:50%;flex-shrink:0;display:flex;
+             align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;}
+  .ycmt .cb .ca{font-weight:600;font-size:13px;margin-bottom:2px;}
+  .ycmt .cb .cl{color:var(--ytmuted);font-size:12px;margin-top:3px;}
+  #cmtspin{display:none;justify-content:center;padding:14px;}
+  #cmtspin .spinner{width:30px;height:30px;border-width:4px;}
+  /* exit-full-mode circle button */
+  #exitfull{display:none;position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:60;
+            width:52px;height:52px;border-radius:50%;background:rgba(39,39,39,.95);border:1px solid #4a4a4a;
+            color:#fff;font-size:22px;cursor:pointer;align-items:center;justify-content:center;
+            box-shadow:0 4px 16px rgba(0,0,0,.5);padding:0;}
+  #exitfull:hover{background:#3a3a3a;border-color:#777;}
+  body.fullmode #exitfull{display:flex;}
+
+  /* loading overlay */
+  #loading{display:none;position:fixed;inset:0;background:rgba(10,16,12,.82);z-index:50;
+           align-items:center;justify-content:center;flex-direction:column;gap:16px;}
+  #loading.show{display:flex;}
+  .spinner{width:56px;height:56px;border-radius:50%;border:5px solid #335041;
+           border-top-color:var(--accent);animation:spin 0.9s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #loadmsg{font-size:15px;color:var(--text);}
+  /* history */
+  #history{display:none;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+  .hentry{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid #335041;
+          border-radius:9px;padding:6px 10px;cursor:pointer;font-size:13px;max-width:280px;}
+  .hentry:hover{border-color:var(--accent);}
+  .hentry img{width:52px;height:30px;object-fit:cover;border-radius:4px;}
+  .hentry .ht{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .hentry .hx{color:var(--muted);font-weight:700;padding:2px 6px;border-radius:5px;flex-shrink:0;}
+  .hentry .hx:hover{color:#f66;background:#24382c;}
+  @media (max-width:640px){
+    body{padding:12px;}
+    button{flex:1 1 45%;padding:14px 10px;font-size:16px;}
+    input.time{flex:1;}
+    textarea{height:30vh;font-size:15px;}
+    #mirrorinner{padding:10px 10px 20px;}
+    #vtitle{font-size:16px;}
+  }
+</style></head>
+<body>
+  <h1>Video Speaker</h1>
+
+  <div class="bar">
+    <input id="url" type="text" placeholder="Paste a video link (YouTube, TikTok, Twitch…) or a file path from your PC (D:\...mp4)">
+    <button class="primary" onclick="findVideo()">🔍 Find video</button>
+  </div>
+
+  <div id="history"></div>
+
+  <!-- ===== YouTube mirror (nothing here is a real control; it's a replica) ===== -->
+  <div id="mirror">
+    <div id="mirrorinner">
+      <div id="frame"><div id="frametime"></div></div>
+      <div id="seek">
+        <div id="preview"><div id="previmg"></div><div id="prevtime"></div></div>
+        <div id="seektrack"></div>
+        <input id="s1" type="range" min="0" max="100" value="0" step="1">
+        <input id="s2" type="range" min="0" max="100" value="100" step="1">
+        <div id="seeklabel"></div>
+      </div>
+      <div id="cards"></div>
+      <div id="vtitle"></div>
+      <div id="chrow" title="Middle-click (scroll wheel) opens the real channel">
+        <div id="avatar"></div>
+        <div><div id="chname"></div><div id="chsub"></div></div>
+      </div>
+      <div id="statsrow">
+        <div id="ytstats"></div>
+        <div id="ytdesc"></div>
+        <span id="descmore" style="display:none">…more</span>
+      </div>
+      <div id="ytcomments">
+        <h3 id="cmthead" style="display:none">Comments</h3>
+        <div id="cmtspin"><div class="spinner"></div></div>
+        <div id="cmtlist"></div>
+        <div id="cmtsentinel"></div>
+      </div>
+    </div>
+  </div>
+  <button id="exitfull" onclick="exitFullMode()" title="Go down to the transcript tools (Esc)">⬇</button>
+
+  <div class="bar" id="rangebar" style="display:none">
+    <label>Start <input id="start" class="time" type="text" value="0:00"></label>
+    <label>Stop <input id="end" class="time" type="text" placeholder="end"></label>
+    <label>Language <select id="lang"></select></label>
+    <label>Source <select id="mode">
+      <option value="normal">Normal (captions, or AI if none)</option>
+      <option value="both">TEST: Both (captions + AI merged)</option>
+    </select></label>
+    <label title="Filter the audio to the human-voice band before the AI listens — helps when music covers the speech. Only affects AI listening.">
+      <input id="voiceonly" type="checkbox"> TEST: voice-only listening</label>
+    <label title="Boost quiet/fading speech and capture trailing words, laughter and reactions the AI would otherwise drop. Only affects AI listening.">
+      <input id="enhance" type="checkbox"> TEST: catch quiet speech</label>
+    <label title="Keep the full context: timestamps, speaker changes, pauses, scene/clip breaks, sound tags, and marks on uncertain lines. Also recovers missed speech. Best for AI listening.">
+      <input id="rich" type="checkbox"> TEST: rich transcript</label>
+    <label title="Force the language the AI listens for. Works everywhere, even TikTok with no captions. Fixes wrong-language guesses on short clips.">Spoken
+      <select id="spoken">
+        <option value="auto">Auto-detect</option>
+        <option value="ja">Japanese</option>
+        <option value="ko">Korean</option>
+        <option value="zh">Chinese</option>
+        <option value="es">Spanish</option>
+        <option value="pt">Portuguese</option>
+        <option value="fr">French</option>
+        <option value="de">German</option>
+        <option value="it">Italian</option>
+        <option value="ru">Russian</option>
+        <option value="ar">Arabic</option>
+        <option value="hi">Hindi</option>
+        <option value="id">Indonesian</option>
+        <option value="th">Thai</option>
+        <option value="vi">Vietnamese</option>
+        <option value="tr">Turkish</option>
+        <option value="sv">Swedish</option>
+        <option value="en">English</option>
+      </select></label>
+    <label title="English = translate foreign speech to English. Original = keep the spoken language's own words.">Output
+      <select id="want">
+        <option value="en">English</option>
+        <option value="orig">Original language</option>
+      </select></label>
+    <button class="go" onclick="getTranscript()">✅ Confirm — get that part</button>
+  </div>
+
+  <div class="bar" id="copybar" style="display:none">
+    <button class="primary" onclick="copyPrompt()">📋 Copy as prompt</button>
+    <button onclick="copyRaw()">📄 Copy text only</button>
+    <button onclick="clearText()">🗑 Clear</button>
+    <label><input id="voicesplit" type="checkbox" checked> Mark voice changes (Voice 1 / Voice 2)</label>
+  </div>
+
+  <textarea id="t" spellcheck="false" placeholder="The transcript of your chosen part will appear here…"></textarea>
+  <div id="status"></div>
+  <div class="hint">Drag the red bar under the picture, or click a small card to jump. Press Esc or the ⬇ circle to leave full view.</div>
+
+  <div id="loading"><div class="spinner"></div><div id="loadmsg">Working…</div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+function setStatus(m){$('status').textContent=m;}
+let lastInfo=null,lastSegs=[],storyboard=null,commentsLoaded=false;
+
+function showLoading(msg){$('loadmsg').textContent=msg;$('loading').classList.add('show');}
+function hideLoading(){$('loading').classList.remove('show');}
+
+function fmtDur(s){
+  if(s==null)return '?';
+  s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),sec=s%60;
+  return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(sec).padStart(2,'0');
+}
+function fmtNum(n){
+  if(n==null)return '—';
+  if(n>=1e6)return (n/1e6).toFixed(1)+' M';
+  if(n>=1e3)return (n/1e3).toFixed(1)+' k';
+  return String(n);
+}
+function fmtDate(d){
+  if(!d||d.length!==8)return '—';
+  return d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8);
+}
+function parseTime(v){
+  v=(v||'').trim();if(!v)return 0;
+  const p=v.split(':').map(Number);
+  if(p.some(isNaN))return 0;
+  return p.reduce((a,b)=>a*60+b,0);
+}
+const langName=(()=>{
+  try{const dn=new Intl.DisplayNames(['en'],{type:'language'});
+      return c=>{try{const base=dn.of(c.split('-')[0])||c;return c.includes('-')?base+' ('+c+')':base;}catch(e){return c;}};}
+  catch(e){return c=>c;}
+})();
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+const AV_COLORS=['#7c4dff','#e91e63','#009688','#ff7043','#3f51b5','#8bc34a','#f4b400','#00acc1'];
+function avColor(name){let h=0;for(const ch of String(name||'?'))h=(h*31+ch.charCodeAt(0))>>>0;return AV_COLORS[h%AV_COLORS.length];}
+
+// ---- history ----
+async function loadHistory(){
+  try{
+    const r=await fetch('/api/history');const items=await r.json();
+    const h=$('history');h.innerHTML='';
+    if(!items.length){h.style.display='none';return;}
+    items.slice(0,8).forEach(it=>{
+      const d=document.createElement('div');d.className='hentry';d.title=it.title||it.url;
+      d.innerHTML=(it.thumbnail?'<img src="'+esc(it.thumbnail)+'" alt="">':'')+
+                  '<span class="ht">'+esc(it.title||it.url)+'</span>'+
+                  '<span class="hx" title="Remove from history">✕</span>';
+      d.onclick=()=>{$('url').value=it.url;findVideo();};
+      d.querySelector('.hx').onclick=async e=>{
+        e.stopPropagation();
+        await fetch('/api/history/delete?url='+encodeURIComponent(it.url));
+        loadHistory();
+      };
+      h.appendChild(d);
+    });
+    const cl=document.createElement('button');
+    cl.textContent='Clean';
+    cl.title='Remove all saved clips, frames, listening results and the list';
+    cl.style.cssText='padding:6px 14px;font-size:13px;align-self:center';
+    cl.onclick=async()=>{
+      if(!confirm('Clean everything saved by Video Speaker? (frames, AI-listening results, the list)'))return;
+      const r=await fetch('/api/clean',{method:'POST'});const d=await r.json();
+      loadHistory();
+      setStatus('Cleaned ✔ — '+d.freed_mb+' MB freed.');
+    };
+    h.appendChild(cl);
+    h.style.display='flex';
+  }catch(e){}
+}
+
+// ---- find + build the mirror ----
+async function findVideo(){
+  const url=$('url').value.trim();
+  if(!url){setStatus('Paste a link first.');return;}
+  showLoading('Finding the video…');
+  try{
+    const r=await fetch('/api/info?url='+encodeURIComponent(url));
+    const d=await r.json();
+    if(d.error){hideLoading();setStatus(d.error);return;}
+    lastInfo=d;storyboard=null;commentsLoaded=false;
+    $('cmtlist').innerHTML='';$('cmthead').style.display='none';
+    buildMirror(d);
+    const sel=$('lang');sel.innerHTML='';
+    (d.sub_langs||[]).forEach(l=>{
+      const o=document.createElement('option');o.value=l.code;
+      o.textContent=langName(l.code)+(l.auto?' — auto-generated':'');
+      sel.appendChild(o);
+    });
+    const pick=(d.sub_langs||[]).find(l=>l.code.startsWith('en')&&!l.auto)||
+               (d.sub_langs||[]).find(l=>l.code.startsWith('en'));
+    if(pick)sel.value=pick.code;
+    initSeek();
+    updateFrame(0);
+    $('rangebar').style.display='flex';
+    loadHistory();
+    // storyboard loads in the background, then upgrades the frame + cards
+    loadStoryboard(url);
+    hideLoading();
+    enterFullMode();
+    setStatus(d.sub_langs&&d.sub_langs.length?
+      'Found ✔ — set start/stop and confirm.':
+      'Found, but this video has no captions on the site — no text can be taken from it.');
+  }catch(e){hideLoading();setStatus('Could not reach the local server. Is the black window still open?');}
+}
+
+function buildMirror(d){
+  $('mirror').classList.add('show');
+  $('vtitle').textContent=d.title||'Untitled';
+  const av=$('avatar');
+  av.textContent=(d.uploader||'?').trim().charAt(0).toUpperCase();
+  av.style.background=avColor(d.uploader);
+  $('chname').textContent=d.uploader||'?';
+  $('chsub').textContent=d.site||'';
+  $('ytstats').innerHTML='<b>'+fmtNum(d.views)+' views</b> · '+fmtDate(d.upload_date)+
+    ' · '+fmtNum(d.likes)+' likes · '+fmtNum(d.comments)+' comments';
+  const desc=$('ytdesc');
+  desc.textContent=d.description||'';
+  desc.classList.remove('open');
+  $('descmore').style.display=(d.description&&d.description.length>150)?'inline-block':'none';
+  $('descmore').textContent='…more';
+}
+$('descmore').onclick=()=>{
+  const o=$('ytdesc').classList.toggle('open');
+  $('descmore').textContent=o?'Show less':'…more';
+};
+// channel: middle-click opens the real channel; left-click does nothing
+$('chrow').addEventListener('auxclick',e=>{
+  if(e.button===1&&lastInfo&&lastInfo.channel_url){
+    e.preventDefault();
+    window.open(lastInfo.channel_url,'_blank');
+  }
+});
+$('chrow').addEventListener('mousedown',e=>{if(e.button===1)e.preventDefault();});
+
+// ---- full mode ----
+function enterFullMode(){
+  document.body.classList.add('fullmode');
+  $('mirror').scrollTop=0;
+}
+function exitFullMode(){
+  document.body.classList.remove('fullmode');
+  $('seek').scrollIntoView({behavior:'smooth',block:'center'});
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&document.body.classList.contains('fullmode'))exitFullMode();
+});
+
+// ---- comments: load automatically when scrolled into view ----
+const cmtObserver=new IntersectionObserver(entries=>{
+  if(entries.some(en=>en.isIntersecting))loadComments();
+},{root:null,rootMargin:'200px'});
+cmtObserver.observe(document.getElementById('cmtsentinel'));
+
+async function loadComments(){
+  if(commentsLoaded||!lastInfo)return;
+  commentsLoaded=true;
+  $('cmthead').style.display='block';
+  $('cmtspin').style.display='flex';
+  try{
+    const r=await fetch('/api/comments?url='+encodeURIComponent($('url').value.trim()));
+    const d=await r.json();
+    $('cmtspin').style.display='none';
+    const box=$('cmtlist');box.innerHTML='';
+    if(d.error||!d.comments||!d.comments.length){
+      box.innerHTML='<div class="ycmt">No comments could be loaded.</div>';return;
+    }
+    d.comments.forEach(c=>{
+      const div=document.createElement('div');div.className='ycmt';
+      const letter=(c.author||'?').replace(/^@/,'').charAt(0).toUpperCase();
+      div.innerHTML='<div class="cav" style="background:'+avColor(c.author)+'">'+esc(letter)+'</div>'+
+        '<div class="cb"><div class="ca">'+esc(c.author||'?')+'</div>'+
+        '<div>'+esc(c.text||'')+'</div>'+
+        '<div class="cl">👍 '+fmtNum(c.likes)+'</div></div>';
+      box.appendChild(div);
+    });
+  }catch(e){
+    $('cmtspin').style.display='none';
+    $('cmtlist').innerHTML='<div class="ycmt">No comments could be loaded.</div>';
+  }
+}
+
+// ---- storyboard: big frame, hover preview, time cards ----
+async function loadStoryboard(url){
+  try{
+    const r=await fetch('/api/storyboard?url='+encodeURIComponent(url));
+    const d=await r.json();
+    if(d.frames&&d.frames.length){storyboard=d;buildCards();updateFrame(+$('s1').value);}
+  }catch(e){}
+}
+function sbFrame(t){
+  const sb=storyboard;if(!sb)return null;
+  let frag=null;
+  for(const f of sb.frames){if(t>=f.start&&t<f.start+f.duration){frag=f;break;}}
+  if(!frag)frag=sb.frames[sb.frames.length-1];
+  const perTile=sb.rows*sb.cols;
+  const frameDur=frag.duration/perTile;
+  const idx=Math.min(perTile-1,Math.max(0,Math.floor((t-frag.start)/Math.max(frameDur,0.01))));
+  return {url:frag.url,row:Math.floor(idx/sb.cols),col:idx%sb.cols,w:sb.w,h:sb.h,cols:sb.cols,rows:sb.rows};
+}
+function updateFrame(t){
+  const fr=$('frame');
+  const f=sbFrame(t);
+  if(f){
+    // scale the storyboard tile up to fill the big frame
+    const scale=fr.clientWidth/f.w;
+    fr.style.backgroundImage='url("'+f.url+'")';
+    fr.style.backgroundSize=(f.cols*f.w*scale)+'px '+(f.rows*f.h*scale)+'px';
+    fr.style.backgroundPosition=(-f.col*f.w*scale)+'px '+(-f.row*f.h*scale)+'px';
+  }else if(lastInfo&&lastInfo.thumbnail){
+    fr.style.backgroundImage='url("'+lastInfo.thumbnail+'")';
+    fr.style.backgroundSize='contain';
+    fr.style.backgroundPosition='center';
+  }
+  $('frametime').textContent=fmtDur(t)+' / '+fmtDur(dur());
+  scheduleSharpFrame(t);
+}
+// after you stop dragging, fetch a real full-resolution frame and swap it in
+let sharpTimer=null,sharpSeq=0;
+function scheduleSharpFrame(t){
+  clearTimeout(sharpTimer);
+  sharpTimer=setTimeout(()=>{
+    const seq=++sharpSeq;
+    const u='/api/frame?url='+encodeURIComponent($('url').value.trim())+'&t='+Math.floor(t);
+    const img=new Image();
+    img.onload=()=>{
+      if(seq!==sharpSeq)return;
+      const fr=$('frame');
+      fr.style.backgroundImage='url("'+u+'")';
+      fr.style.backgroundSize='contain';
+      fr.style.backgroundPosition='center';
+    };
+    img.src=u;
+  },450);
+}
+function buildCards(){
+  const c=$('cards');c.innerHTML='';
+  const d=dur();if(!d||!storyboard){c.style.display='none';return;}
+  const n=10,cw=120;
+  for(let i=0;i<n;i++){
+    const t=Math.floor(d*(i+0.5)/n);
+    const f=sbFrame(t);if(!f)continue;
+    const scale=cw/f.w,ch=Math.round(f.h*scale);
+    const div=document.createElement('div');div.className='tcard';
+    div.innerHTML='<span class="ti" style="width:'+cw+'px;height:'+ch+'px;'+
+      'background-image:url(&quot;'+f.url+'&quot;);'+
+      'background-size:'+(f.cols*f.w*scale)+'px '+(f.rows*f.h*scale)+'px;'+
+      'background-position:'+(-f.col*f.w*scale)+'px '+(-f.row*f.h*scale)+'px;"></span>'+
+      '<span class="tl">'+fmtDur(t)+'</span>';
+    div.onclick=()=>{const[a,b]=seekVals();setRange(t,Math.max(t,b));updateFrame(t);};
+    c.appendChild(div);
+  }
+  c.style.display='flex';
+}
+let prevHideTimer=null;
+function showPreview(t,pct){
+  if(!storyboard)return;
+  const f=sbFrame(t);if(!f)return;
+  const p=$('preview'),im=$('previmg');
+  im.style.width=f.w+'px';im.style.height=f.h+'px';
+  im.style.backgroundImage='url("'+f.url+'")';
+  im.style.backgroundPosition=(-f.col*f.w)+'px '+(-f.row*f.h)+'px';
+  $('prevtime').textContent=fmtDur(t);
+  p.style.display='block';
+  const bar=$('seek').getBoundingClientRect();
+  let x=pct*bar.width-(f.w/2+2);
+  x=Math.max(0,Math.min(x,bar.width-f.w-6));
+  p.style.left=x+'px';
+  clearTimeout(prevHideTimer);
+  prevHideTimer=setTimeout(()=>{p.style.display='none';},1600);
+}
+
+// ---- transcript ----
+async function getTranscript(){
+  const url=$('url').value.trim();
+  const start=parseTime($('start').value);
+  const end=parseTime($('end').value)||0;
+  const mode=$('mode').value;
+  showLoading((mode==='both'?'TEST: reading captions AND listening (this takes longer)…':
+    'Reading what was said between '+fmtDur(start)+' and '+(end?fmtDur(end):'the end')+'…'));
+  try{
+    const vo=$('voiceonly').checked?'1':'0';
+    const eh=$('enhance').checked?'1':'0';
+    const ri=$('rich').checked?'1':'0';
+    const r=await fetch('/api/transcript?url='+encodeURIComponent(url)+
+      '&start='+start+'&end='+end+'&mode='+mode+'&voiceonly='+vo+'&enhance='+eh+'&rich='+ri+
+      '&spoken='+$('spoken').value+'&want='+$('want').value+
+      '&lang='+encodeURIComponent($('lang').value||'en'));
+    const d=await r.json();
+    hideLoading();
+    if(d.error){setStatus(d.error);return;}
+    lastSegs=d.segments||[];
+    if(!lastSegs.length){setStatus('No spoken text found here — the AI heard nothing this run. Click the Clean button (clears a stuck cache), then try again.');return;}
+    if(d.rich){$('t').value=d.rich;}  // rich: show verbatim (only when there ARE lines)
+    else render();
+    $('copybar').style.display='flex';
+    $('t').scrollIntoView({behavior:'smooth',block:'nearest'});
+    setStatus('Done ✔ — '+lastSegs.length+' lines from your chosen part ('+langName(d.lang)+').');
+  }catch(e){hideLoading();setStatus('Could not reach the local server. Is the black window still open?');}
+}
+function render(){
+  const split=$('voicesplit').checked;
+  let out=[],voice=1,lastEnd=null;
+  for(const s of lastSegs){
+    if(split&&lastEnd!==null&&s.t-lastEnd>2.5){
+      voice=voice===1?2:1;
+      out.push('\n[Voice '+voice+']');
+    }else if(split&&lastEnd===null){
+      out.push('[Voice 1]');
+    }
+    out.push(s.text);
+    lastEnd=s.t;
+  }
+  $('t').value=out.join(' ').replace(/\s*\n\s*/g,'\n').replace(/([.!?])\s+/g,'$1\n');
+}
+document.addEventListener('change',e=>{if(e.target.id==='voicesplit'&&lastSegs.length)render();});
+
+// The rich-transcript mode puts an explanatory note in square brackets at the
+// very top of the text. It explains the format to a human, and it is pure noise
+// in anything you paste elsewhere — so it never goes out through either button.
+function cleanText(s){
+  return s.replace(/^\s*\[Rich transcript[\s\S]*?\]\s*\n?/, '').trim();
+}
+
+// Copies never silently die: if the clipboard is unavailable (any page served
+// over plain http, e.g. from a phone), fall back so the button still works.
+function putOnClipboard(s,msg){
+  const done=()=>setStatus(msg);
+  const fail=()=>setStatus('Could not copy — select the text and copy it by hand.');
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(s).then(done,()=>oldWay(s)?done():fail());
+    }else{ oldWay(s)?done():fail(); }
+  }catch(e){ fail(); }
+}
+function oldWay(s){
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=s; ta.style.cssText='position:fixed;top:0;left:0;width:1px;height:1px;opacity:0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    const ok=document.execCommand('copy'); document.body.removeChild(ta); return ok;
+  }catch(e){ return false; }
+}
+
+// GREEN — everything an AI needs to understand where this came from, and
+// nothing else. Only facts that exist are included; no blank labels, no
+// explanation of the tool, no filler.
+function copyPrompt(){
+  const text=cleanText($('t').value);
+  if(!text){setStatus('Nothing to copy.');return;}
+  const i=lastInfo||{};
+  const L=[];
+
+  L.push('Transcript of a video. Treat it as if you watched it yourself.');
+  L.push('');
+  if(i.title)                L.push('Title: '+i.title);
+  if(i.uploader)             L.push('Channel: '+i.uploader);
+  if(i.site)                 L.push('Site: '+i.site);
+  if($('url').value.trim())  L.push('Link: '+$('url').value.trim());
+  if(i.duration)             L.push('Full length: '+fmtDur(i.duration));
+
+  const a=$('start').value, b=$('end').value;
+  if(a||b) L.push('Part transcribed: '+(a||'0:00')+' to '+(b||'the end'));
+
+  if(i.upload_date&&/^\d{8}$/.test(i.upload_date)){
+    L.push('Published: '+i.upload_date.slice(0,4)+'-'+i.upload_date.slice(4,6)+'-'+i.upload_date.slice(6,8));
+  }
+
+  // Only worth saying when the text actually carries these marks.
+  const notes=[];
+  if(/^\[\d/m.test(text))      notes.push('lines start with their timestamp');
+  if(/Speaker \d/.test(text))  notes.push('speaker numbers are guesses, not certain');
+  if(/\(\?\)/.test(text))      notes.push('"(?)" marks a line that was hard to hear');
+  if(notes.length) L.push('Note: '+notes.join('; ')+'.');
+
+  L.push('');
+  L.push('=== TRANSCRIPT START ===');
+  L.push(text);
+  L.push('=== TRANSCRIPT END ===');
+
+  // If the optional AI feature has watched the video, include what was actually
+  // on screen. Without that folder this variable never exists and nothing is
+  // added, so the button works exactly the same with the feature removed.
+  if(window.__videoSeenBlock) L.push(window.__videoSeenBlock);
+
+  putOnClipboard(L.join('\n'),
+    window.__videoSeenBlock ? 'Copied with the video details and what is on screen ✔'
+                            : 'Copied with the video details ✔');
+}
+
+// BLACK — the spoken words and nothing whatsoever around them.
+function copyRaw(){
+  const text=cleanText($('t').value);
+  if(!text){setStatus('Nothing to copy.');return;}
+  putOnClipboard(text,'Copied text only ✔');
+}
+function clearText(){$('t').value='';setStatus('Cleared.');}
+$('url').addEventListener('keydown',e=>{if(e.key==='Enter')findVideo();});
+
+// ---- seek bar ----
+function dur(){return (lastInfo&&lastInfo.duration)?lastInfo.duration:0;}
+function seekVals(){
+  let a=+$('s1').value,b=+$('s2').value;
+  return a<=b?[a,b]:[b,a];
+}
+function drawSeek(){
+  const d=dur()||1,[a,b]=seekVals();
+  const pa=a/d*100,pb=b/d*100;
+  $('seektrack').style.background=
+    'linear-gradient(to right,#4a4a4a 0%,#4a4a4a '+pa+'%,#f00 '+pa+'%,#f00 '+pb+'%,#4a4a4a '+pb+'%)';
+  $('seeklabel').textContent=fmtDur(a)+'  →  '+fmtDur(b)+'   (of '+fmtDur(d)+')';
+}
+function setRange(a,b){
+  $('s1').value=a;$('s2').value=b;
+  $('start').value=fmtDur(a);$('end').value=fmtDur(b);
+  drawSeek();
+}
+function initSeek(){
+  const d=dur();
+  $('s1').max=d;$('s2').max=d;
+  setRange(0,d);
+  $('seek').style.display='block';
+}
+$('s1').addEventListener('input',()=>{const[a,b]=seekVals();$('start').value=fmtDur(a);$('end').value=fmtDur(b);drawSeek();
+  const t=+$('s1').value;updateFrame(t);showPreview(t,t/(dur()||1));});
+$('s2').addEventListener('input',()=>{const[a,b]=seekVals();$('start').value=fmtDur(a);$('end').value=fmtDur(b);drawSeek();
+  const t=+$('s2').value;updateFrame(t);showPreview(t,t/(dur()||1));});
+function syncFromBoxes(){
+  const d=dur();
+  let a=$('start').value.trim()===''?0:parseTime($('start').value);
+  let b=$('end').value.trim()===''?d:parseTime($('end').value);
+  a=Math.max(0,Math.min(a,d));b=Math.max(0,Math.min(b||d,d));
+  if(a>b)[a,b]=[b,a];
+  setRange(a,b);
+  updateFrame(a);
+}
+$('start').addEventListener('change',syncFromBoxes);
+$('end').addEventListener('change',syncFromBoxes);
+$('start').addEventListener('blur',syncFromBoxes);
+$('end').addEventListener('blur',syncFromBoxes);
+
+loadHistory();
+</script>
+
+<!-- AI assist: TEST FEATURE. Delete the ai\ folder to remove it completely —
+     this line then loads nothing and the page is unchanged. -->
+<script src="/ai/panel.js" defer></script>
+</body></html>
